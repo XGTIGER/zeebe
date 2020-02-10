@@ -7,6 +7,8 @@
  */
 package io.zeebe.el.impl;
 
+import static io.zeebe.util.buffer.BufferUtil.bufferAsArray;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,10 +27,19 @@ public final class MessagePackConverter {
 
   public Map<String, Object> readMessagePack(final DirectBuffer messagePack) {
     try {
-      return objectMapper.readValue(messagePack.byteArray(), MAP_TYPE_REFERENCE);
+      return objectMapper.readValue(bufferAsArray(messagePack), MAP_TYPE_REFERENCE);
 
     } catch (final IOException e) {
       throw new RuntimeException("Failed to transform a MessagePack buffer into a Map", e);
+    }
+  }
+
+  public Object readMessagePackValue(final DirectBuffer messagePack) {
+    try {
+      return objectMapper.readValue(bufferAsArray(messagePack), Object.class);
+
+    } catch (final IOException e) {
+      throw new RuntimeException("Failed to transform a MessagePack buffer", e);
     }
   }
 

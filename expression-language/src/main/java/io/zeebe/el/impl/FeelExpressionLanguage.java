@@ -9,11 +9,12 @@ package io.zeebe.el.impl;
 
 import static io.zeebe.util.EnsureUtil.ensureNotNull;
 
+import io.zeebe.el.EvaluationContext;
 import io.zeebe.el.EvaluationResult;
 import io.zeebe.el.Expression;
 import io.zeebe.el.ExpressionLanguage;
+import io.zeebe.el.impl.feel.FeelVariableContext;
 import java.util.regex.Pattern;
-import org.agrona.DirectBuffer;
 import org.camunda.feel.FeelEngine;
 import org.camunda.feel.FeelEngine.Failure;
 import org.camunda.feel.ParsedExpression;
@@ -63,9 +64,9 @@ public final class FeelExpressionLanguage implements ExpressionLanguage {
 
   @Override
   public EvaluationResult evaluateExpression(
-      final Expression expression, final DirectBuffer variables) {
+      final Expression expression, final EvaluationContext context) {
     ensureNotNull("expression", expression);
-    ensureNotNull("variables", variables);
+    ensureNotNull("context", context);
 
     if (!expression.isValid()) {
       final var failureMessage = expression.getFailureMessage();
@@ -77,7 +78,7 @@ public final class FeelExpressionLanguage implements ExpressionLanguage {
 
     } else if (expression instanceof FeelExpression) {
       final var feelExpression = (FeelExpression) expression;
-      return evaluateFeelExpression(expression, variables, feelExpression);
+      return evaluateFeelExpression(expression, context, feelExpression);
     }
 
     throw new IllegalArgumentException(
@@ -99,13 +100,13 @@ public final class FeelExpressionLanguage implements ExpressionLanguage {
 
   private EvaluationResult evaluateFeelExpression(
       final Expression expression,
-      final DirectBuffer variables,
+      final EvaluationContext context,
       final FeelExpression feelExpression) {
 
     final var parsedExpression = feelExpression.getParsedExpression();
-    final var variablesAsMap = messagePackConverter.readMessagePack(variables);
+    final var feelContext = new FeelVariableContext(context);
 
-    final Either<Failure, Object> evalResult = feelEngine.eval(parsedExpression, variablesAsMap);
+    final Either<Failure, Object> evalResult = feelEngine.eval(parsedExpression, feelContext);
 
     if (evalResult.isLeft()) {
       final var failure = evalResult.left().get();

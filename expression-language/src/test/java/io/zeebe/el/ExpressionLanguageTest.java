@@ -11,12 +11,11 @@ import static io.zeebe.test.util.MsgPackUtil.asMsgPack;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
-import org.agrona.DirectBuffer;
 import org.junit.Test;
 
 public class ExpressionLanguageTest {
 
-  private static final DirectBuffer NO_VARIABLES = asMsgPack(Map.of());
+  private static final EvaluationContext EMPTY_CONTEXT = StaticEvaluationContext.empty();
 
   private final ExpressionLanguage expressionLanguage =
       ExpressionLanguageFactory.createExpressionLanguage();
@@ -69,7 +68,7 @@ public class ExpressionLanguageTest {
   @Test
   public void shouldEvaluateStaticValue() {
     final var expression = expressionLanguage.parseExpression("x");
-    final var evaluationResult = expressionLanguage.evaluateExpression(expression, NO_VARIABLES);
+    final var evaluationResult = expressionLanguage.evaluateExpression(expression, EMPTY_CONTEXT);
 
     assertThat(evaluationResult).isNotNull();
     assertThat(evaluationResult.isFailure()).isFalse();
@@ -83,7 +82,8 @@ public class ExpressionLanguageTest {
   public void shouldEvaluateExpression() {
     final var expression = expressionLanguage.parseExpression("=x");
     final var evaluationResult =
-        expressionLanguage.evaluateExpression(expression, asMsgPack(Map.of("x", "x")));
+        expressionLanguage.evaluateExpression(
+            expression, StaticEvaluationContext.of(Map.of("x", asMsgPack("\"x\""))));
 
     assertThat(evaluationResult).isNotNull();
     assertThat(evaluationResult.isFailure()).isFalse();
@@ -96,7 +96,7 @@ public class ExpressionLanguageTest {
   @Test
   public void shouldEvaluateExpressionWithMissingVariables() {
     final var expression = expressionLanguage.parseExpression("=x");
-    final var evaluationResult = expressionLanguage.evaluateExpression(expression, NO_VARIABLES);
+    final var evaluationResult = expressionLanguage.evaluateExpression(expression, EMPTY_CONTEXT);
 
     assertThat(evaluationResult).isNotNull();
     assertThat(evaluationResult.isFailure()).isTrue();
@@ -110,7 +110,7 @@ public class ExpressionLanguageTest {
   @Test
   public void shouldEvaluateInvalidExpression() {
     final var expression = expressionLanguage.parseExpression("x.y");
-    final var evaluationResult = expressionLanguage.evaluateExpression(expression, NO_VARIABLES);
+    final var evaluationResult = expressionLanguage.evaluateExpression(expression, EMPTY_CONTEXT);
 
     assertThat(evaluationResult).isNotNull();
     assertThat(evaluationResult.isFailure()).isTrue();

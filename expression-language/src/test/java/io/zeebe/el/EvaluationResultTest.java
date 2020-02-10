@@ -102,7 +102,7 @@ public class EvaluationResultTest {
   private EvaluationResult evaluateExpression(final String expression) {
     final var parseExpression = expressionLanguage.parseExpression(expression);
     final var evaluationResult =
-        expressionLanguage.evaluateExpression(parseExpression, NO_VARIABLES);
+        expressionLanguage.evaluateExpression(parseExpression, StaticEvaluationContext.empty());
 
     assertThat(evaluationResult.isFailure())
         .describedAs(evaluationResult.getFailureMessage())
