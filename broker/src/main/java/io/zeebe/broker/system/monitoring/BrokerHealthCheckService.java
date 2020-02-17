@@ -28,7 +28,7 @@ import org.slf4j.Logger;
 
 public final class BrokerHealthCheckService extends Actor implements PartitionListener {
 
-  public static final String PARTITION_COMPONENT_NAME_FORMAT = "Partition-%d";
+  private static final String PARTITION_COMPONENT_NAME_FORMAT = "Partition-%d";
   private static final Logger LOG = Loggers.SYSTEM_LOGGER;
   private final Atomix atomix;
   private final String actorName;
@@ -60,7 +60,7 @@ public final class BrokerHealthCheckService extends Actor implements PartitionLi
                     String.format(PARTITION_COMPONENT_NAME_FORMAT, partitionId)));
   }
 
-  public boolean isBrokerReady() {
+  boolean isBrokerReady() {
     return brokerStarted;
   }
 
@@ -111,8 +111,8 @@ public final class BrokerHealthCheckService extends Actor implements PartitionLi
     healthMonitor.startMonitoring();
   }
 
-  public void registerComponent(final String componentName, final HealthMonitorable component) {
-    healthMonitor.registerComponent(componentName, component);
+  private void registerComponent(final String componentName, final HealthMonitorable component) {
+    actor.run(() -> healthMonitor.registerComponent(componentName, component));
   }
 
   public void registerMonitoredPartition(final int partitionId, final HealthMonitorable partition) {
@@ -120,7 +120,11 @@ public final class BrokerHealthCheckService extends Actor implements PartitionLi
     registerComponent(componentName, partition);
   }
 
-  public HealthStatus getBrokerHealth() {
+  public boolean isBrokerHealthy() {
+    return !actor.isClosed() && getBrokerHealth() == HealthStatus.HEALTHY;
+  }
+
+  private HealthStatus getBrokerHealth() {
     if (isBrokerReady()) {
       return healthMonitor.getHealthStatus();
     }

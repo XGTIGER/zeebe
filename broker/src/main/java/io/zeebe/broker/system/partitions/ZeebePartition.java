@@ -61,12 +61,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 
 public final class ZeebePartition extends Actor
-    implements RaftCommitListener, RaftRoleChangeListener, HealthMonitorable {
+    implements RaftCommitListener, RaftRoleChangeListener, HealthMonitorable, FailureListener {
 
   private static final Logger LOG = Loggers.SYSTEM_LOGGER;
   private static final int EXPORTER_PROCESSOR_ID = 1003;
@@ -94,8 +93,7 @@ public final class ZeebePartition extends Actor
   private ZeebeDb zeebeDb;
   private final String actorName;
   private FailureListener failureListener;
-  private final AtomicReference<HealthStatus> healthStatus =
-      new AtomicReference<>(HealthStatus.UNHEALTHY);
+  private volatile HealthStatus healthStatus = HealthStatus.UNHEALTHY;
   private final HealthMonitor criticalComponentsHealthMonitor;
 
   public ZeebePartition(
@@ -563,9 +561,7 @@ public final class ZeebePartition extends Actor
   @Override
   protected void onActorStarted() {
     criticalComponentsHealthMonitor.startMonitoring();
-    criticalComponentsHealthMonitor.addFailureListener(
-        FailureListener.withListeners(
-            () -> actor.call(this::onFailure), () -> actor.call(this::onRecovered)));
+    criticalComponentsHealthMonitor.addFailureListener(this);
   }
 
   @Override
@@ -594,27 +590,39 @@ public final class ZeebePartition extends Actor
     super.close();
   }
 
-  private void onFailure() {
-    healthStatus.set(HealthStatus.UNHEALTHY);
-    if (failureListener != null) {
-      failureListener.onFailure();
-    }
+  public void onFailure() {
+    actor.run(() -> updateHealthStatus(HealthStatus.UNHEALTHY));
   }
 
-  private void onRecovered() {
-    healthStatus.set(HealthStatus.HEALTHY);
-    if (failureListener != null) {
-      failureListener.onRecovered();
+  public void onRecovered() {
+    actor.run(() -> updateHealthStatus(HealthStatus.HEALTHY));
+  }
+
+  private void updateHealthStatus(final HealthStatus newStatus) {
+    if (healthStatus != newStatus) {
+      healthStatus = newStatus;
+      if (failureListener != null) {
+        switch (newStatus) {
+          case HEALTHY:
+            failureListener.onRecovered();
+            break;
+          case UNHEALTHY:
+            failureListener.onFailure();
+            break;
+          default:
+            break;
+        }
+      }
     }
   }
 
   @Override
   public HealthStatus getHealthStatus() {
-    return healthStatus.get();
+    return healthStatus;
   }
 
   @Override
   public void addFailureListener(final FailureListener failureListener) {
-    actor.call(() -> this.failureListener = failureListener);
+    actor.run(() -> this.failureListener = failureListener);
   }
 }

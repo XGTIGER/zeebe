@@ -13,6 +13,10 @@ package io.zeebe.util.health;
  */
 public interface HealthMonitor extends HealthMonitorable {
 
+  /**
+   * Starts necessary services for monitoring. Typically implemented by a monitor to start periodic
+   * monitoring.
+   */
   void startMonitoring();
 
   /**

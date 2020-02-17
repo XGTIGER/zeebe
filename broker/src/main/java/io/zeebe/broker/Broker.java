@@ -118,6 +118,13 @@ public final class Broker implements AutoCloseable {
     return startFuture;
   }
 
+  public boolean isHealthy() {
+    if (healthCheckService != null) {
+      return healthCheckService.isBrokerHealthy();
+    }
+    return false;
+  }
+
   private void internalStart() {
     final BrokerCfg brokerCfg = getConfig();
     final StartProcess startProcess = initStart();
@@ -171,7 +178,7 @@ public final class Broker implements AutoCloseable {
     }
     startContext.addStep("cluster services", () -> atomix.start().join());
     startContext.addStep("topology manager", () -> topologyManagerStep(clusterCfg, localBroker));
-    startContext.addStep("metric's server", () -> metricsServerStep(networkCfg, localBroker));
+    startContext.addStep("metric's server", () -> monitoringServerStep(networkCfg, localBroker));
     startContext.addStep(
         "leader management request handler", () -> managementRequestStep(localBroker));
     startContext.addStep(
@@ -256,7 +263,7 @@ public final class Broker implements AutoCloseable {
     return topologyManager;
   }
 
-  private AutoCloseable metricsServerStep(
+  private AutoCloseable monitoringServerStep(
       final NetworkCfg networkCfg, final BrokerInfo localBroker) {
     healthCheckService = new BrokerHealthCheckService(localBroker, atomix);
     partitionListeners.add(healthCheckService);
