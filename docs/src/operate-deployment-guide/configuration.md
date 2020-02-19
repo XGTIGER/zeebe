@@ -11,7 +11,8 @@ with `camunda.operate`. The following parts are configurable:
  * [Authentication](authentication.md)
  * [Scaling Operate](importer-and-archiver.md)
  * [Monitoring possibilities](#monitoring-operate)
- 
+ * [Logging configuration](#logging)
+  
 # Configurations
 
 # Elasticsearch
@@ -123,6 +124,72 @@ management.endpoints.web.exposure.include: health,prometheus
 # Enable or disable metrics
 management.metrics.export.prometheus.enabled: false
 ```
+
+# Logging
+
+Operate provides logging by using Log4j2 configurations. There are two logging configuration files are provided:
+
+## Default logging configuration
+
+* config/log4j2.xml (Default)
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+  <Properties>
+    <Property name="LOG_PATTERN">%clr{%d{yyyy-MM-dd HH:mm:ss.SSS}}{faint} %clr{%5p} %clr{${sys:PID}}{magenta} %clr{---}{faint} %clr{[%15.15t]}{faint} %clr{%-40.40c{1.}}{cyan} %clr{:}{faint} %m%n%xwEx</Property>
+  </Properties>
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT" follow="true">
+      <PatternLayout pattern="${LOG_PATTERN}"/>
+    </Console>
+
+  </Appenders>
+  <Loggers>
+    <Logger name="org.camunda.operate" level="info" />
+    <Root level="info">
+      <AppenderRef ref="Console"/>
+    </Root>
+  </Loggers>
+</Configuration>
+```
+## JSON logging configuration
+
+* config/log4j2-json.xml (For use in cloud environment like gcloud)
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+  <Properties>
+    <Property name="LOG_PATTERN">%clr{%d{yyyy-MM-dd HH:mm:ss.SSS}}{faint} %clr{%5p} %clr{${sys:PID}}{magenta} %clr{---}{faint} %clr{[%15.15t]}{faint} %clr{%-40.40c{1.}}{cyan} %clr{:}{faint} %m%n%xwEx</Property>
+  </Properties>
+  <Appenders>
+	 <Console name="StackdriverJSONConsole" target="SYSTEM_OUT" follow="true">
+        <StackdriverJSONLayout/>
+      </Console>
+  </Appenders>
+  <Loggers>
+    <Logger name="org.camunda.operate" level="info" />
+    <Root level="info">
+      <AppenderRef ref="StackdriverJSONConsole"/>
+    </Root>
+  </Loggers>
+</Configuration>
+```
+
+## Enable Logging configuration
+
+You can enable a logging configuration by specifying which logging configuration file should be used like this:
+
+```
+JAVA_OPTS=-Dlogging.config=file:/usr/local/operate/config/log4j2-json.xml
+```
+
+You need to give the location of which logging configuration file you want to use.
+
+
+
+
 
 # An example of application.yml file
 
